@@ -1,0 +1,21 @@
+# Cloud Build configuration for tau2-agent
+# Allows specifying Dockerfile path without symlinks
+
+steps:
+  # Build the Docker image using the nested Dockerfile
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '--no-cache'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/$PROJECT_ID/tau2-agent/tau2-agent:${_TAG}'
+      - '-f'
+      - 'tau2_agent/docker_setup/Dockerfile'
+      - '.'
+
+images:
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/tau2-agent/tau2-agent:${_TAG}'
+
+substitutions:
+  _TAG: 'latest'
+  _REGION: 'us-west2'

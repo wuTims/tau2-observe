@@ -28,7 +28,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PORT=8001 \
     LOG_LEVEL=INFO \
     TAU2_AGENT_MODEL=gemini-2.0-flash \
-    PYTHONPATH=/app/agents:/app/src \
+    PYTHONPATH=/app/agents \
     AGENTS_DIR=/app/agents \
     # Datadog LLM Observability (agentless mode)
     DD_TRACE_ENABLED=true \
@@ -52,11 +52,9 @@ WORKDIR /app
 COPY --from=builder /wheels /wheels
 RUN pip install --no-cache-dir /wheels/*.whl && rm -rf /wheels
 
-# Copy application source
-COPY --chown=tau2agent:tau2agent src/ ./src/
+# Copy domain data (tau2 package installed via pip)
 COPY --chown=tau2agent:tau2agent data/tau2/domains/ ./data/tau2/domains/
 COPY --chown=tau2agent:tau2agent data/tau2/user_simulator/ ./data/tau2/user_simulator/
-COPY --chown=tau2agent:tau2agent pyproject.toml README.md ./
 
 # Create agents directory and copy tau2_agent directly into it
 # (ADK validates symlinks don't resolve outside base directory)
@@ -66,9 +64,6 @@ COPY --chown=tau2agent:tau2agent tau2_agent/ ./agents/tau2_agent/
 # Create .adk directory inside agents for ADK artifact storage
 # ADK looks for .adk relative to AGENTS_DIR
 RUN mkdir -p /app/agents/.adk && chown tau2agent:tau2agent /app/agents/.adk
-
-# Install tau2 package (no deps - already installed)
-RUN pip install -e . --no-deps
 
 # Create data directories with proper permissions
 # - simulations/: tau2 run.py saves simulation results here

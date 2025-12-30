@@ -1,6 +1,9 @@
 # Minimal runtime dependencies for tau2_agent Docker image
 # Excludes visualization packages (plotly, matplotlib, seaborn, scikit-learn, scipy)
 
+# tau2 benchmark framework (installed from git)
+tau2 @ git+https://github.com/wuTims/tau2-bench-agent.git
+
 # Core framework
 fastapi>=0.115.11
 uvicorn>=0.34.0
