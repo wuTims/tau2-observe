@@ -893,15 +893,11 @@ class DatadogSetup:
 
     def create_all(
         self,
-        dashboard_version: str = "agents",
-        all_dashboards: bool = True,
         force_update: bool = False,
     ) -> dict:
         """Create all Datadog resources.
 
         Args:
-            dashboard_version: Dashboard version to create if all_dashboards is False.
-            all_dashboards: If True, create all dashboards (agents + operations).
             force_update: If True, update existing monitors instead of skipping.
 
         Returns:
@@ -926,11 +922,7 @@ class DatadogSetup:
             logger.error(f"Failed to create SLOs: {e}")
 
         try:
-            if all_dashboards:
-                results["dashboards"] = self.create_all_dashboards()
-            else:
-                dashboard = self.create_dashboard(version=dashboard_version)
-                results["dashboards"] = [dashboard] if dashboard else []
+            results["dashboards"] = self.create_all_dashboards()
         except Exception as e:
             logger.error(f"Failed to create dashboard(s): {e}")
 
@@ -1080,8 +1072,6 @@ def main() -> int:
     try:
         if args.all:
             setup.create_all(
-                dashboard_version=args.dashboard_version,
-                all_dashboards=args.all_dashboards,
                 force_update=args.force_update,
             )
             # Also set up case management when --all is used
