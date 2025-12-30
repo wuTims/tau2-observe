@@ -16,7 +16,7 @@ The instrumented LLM application is [tau2-bench-agent](https://github.com/wuTims
 
 ```
 ┌───────────────────┐      A2A       ┌─────────────────┐      A2A       ┌─────────────────┐
-│ traffic_generator │───────────────▶│   tau2_agent    │───────────────▶│   mock_agent    │
+│ traffic_generator │───────────────▶│   tau2_agent    │──────────────▶│   mock_agent    │
 └───────────────────┘                │   (Cloud Run)   │                │   (Cloud Run)   │
                                      └────────┬────────┘                └─────────────────┘
                                               │
@@ -61,6 +61,64 @@ export DD_API_KEY=your_datadog_api_key
 export DD_APP_KEY=your_datadog_app_key
 
 uv run python scripts/setup_datadog.py --all
+```
+
+## Cloud Run Deployment
+
+### Prerequisites (one-time)
+
+```bash
+# Set project
+export PROJECT_ID=your-gcp-project
+gcloud config set project $PROJECT_ID
+
+# Enable required APIs
+gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com
+
+# Create Artifact Registry repository
+gcloud artifacts repositories create tau2-agent \
+    --repository-format=docker \
+    --location=us-west2
+
+# Create service account
+gcloud iam service-accounts create tau2-agent-sa \
+    --display-name="tau2-agent service account"
+
+# Grant Secret Manager access
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:tau2-agent-sa@${PROJECT_ID}.iam.gserviceaccount.com" \
+    --role="roles/secretmanager.secretAccessor"
+
+# Create secrets (replace with your values)
+echo -n "your-gemini-api-key" | gcloud secrets create google-api-key --data-file=-
+echo -n "your-datadog-api-key" | gcloud secrets create dd-api-key --data-file=-
+echo -n "your-datadog-site" | gcloud secrets create dd-site --data-file=-
+```
+
+### Build and Deploy
+
+```bash
+# Build container image
+gcloud builds submit \
+    --config cloudbuild.yaml \
+    --project $PROJECT_ID \
+    .
+
+# Deploy tau2_agent to Cloud Run
+gcloud run deploy tau2-agent \
+    --image us-west2-docker.pkg.dev/${PROJECT_ID}/tau2-agent/tau2-agent:latest \
+    --region us-west2 \
+    --platform managed \
+    --allow-unauthenticated \
+    --port 8001 \
+    --memory 2Gi \
+    --cpu 2 \
+    --timeout 3600 \
+    --service-account tau2-agent-sa@${PROJECT_ID}.iam.gserviceaccount.com \
+    --set-secrets "GOOGLE_API_KEY=google-api-key:latest,DD_API_KEY=dd-api-key:latest,DD_SITE=dd-site:latest"
+
+# Get service URL
+gcloud run services describe tau2-agent --region us-west2 --format 'value(status.url)'
 ```
 
 ## Deployed Endpoints
@@ -185,8 +243,8 @@ tau2-observe/
 | `DD_APP_KEY` | Yes | Datadog Application key |
 | `DD_SITE` | No | Datadog site (default: datadoghq.com) |
 | `GEMINI_API_KEY` | Yes | Gemini API key for A2A requests |
-| `TAU2_AGENT_URL` | No | Custom tau2_agent base URL |
-| `MOCK_AGENT_URL` | No | Custom mock agent base URL |
+| `TAU2_AGENT_URL` | Yes | Custom tau2_agent base URL |
+| `MOCK_AGENT_URL` | Yes | Custom mock agent base URL |
 
 ## Datadog Organization
 
